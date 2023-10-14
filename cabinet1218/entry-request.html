@@ -103,19 +103,22 @@
   <script>
     function onchangeFormat() {
       const format = document.getElementById('format').value;
+      const day = document.getElementById('day');
       if (format === 'offline') {
-        document.getElementById('day').remove(1);
+        day.options[0].innerText = 'Вторник вечер';
+        day.remove(1);
         const option = document.createElement('option')
         option.text = 'Понедельник день';
         option.value = 'monday';
         option.selected = true;
-        document.getElementById('day').add(option, 0);
+        day.add(option, 0);
       } else {
-        document.getElementById('day').remove(0);
+        day.options[1].innerText = 'Вторник день';
+        day.remove(0);
         const option = document.createElement('option')
         option.text = 'Среда день';
         option.value = 'wednesday';
-        document.getElementById('day').add(option, 1);
+        day.add(option, 1);
       }
     }
 
