@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
+  <!-- Telegram Web App -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <title>Предложка Киноштапеля</title>
+
+  <style>
+    body,
+    .form-label select,
+    .form-label input,
+    .form-label input:focus,
+    .form-label textarea,
+    .form-label textarea:focus {
+      background: var(--tg-theme-bg-color);
+      color: var(--tg-theme-text-color);
+    }
+
+    button {
+      background: var(--tg-theme-button-color);
+      color: var(--tg-theme-button-text-color);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="main" class="container-fluid">
+    <h2 class="text-center">Предложка Киноштапеля</h2>
+    <form class="was-validated">
+      <div class="form-label">
+        <label for="movie-name" class="form-label">
+          Название фильма
+        </label>
+        <input type="text" class="form-control" id="movie-name" required maxlength="100">
+      </div>
+
+      <div class="form-label">
+        <label for="movie-description" class="form-label">
+          Описание фильма
+        </label>
+        <textarea class="form-control" id="movie-description" rows="5" required maxlength="1000"></textarea>
+      </div>
+
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="movie-update" checked>
+        <label class="form-check-label" for="movie-update">
+          Обновить описание фильма
+        </label>
+      </div>
+
+      <div class="form-label">
+        <label for="datetime" class="form-label">
+          Дата и время встречи
+        </label>
+        <input type="datetime-local" class="form-control" id="datetime" onchange="validateDateTime(this);" required>
+        <div class="form-text">Встречу можно проводить во Вт, Чт, Пт, Сб с 18:00 до 21:00</div>
+      </div>
+
+      <div class="form-label">
+        <label for="max-participants-count" class="form-label">
+          Максимальное количество участников
+        </label>
+        <select class="form-select" aria-label="max-participants-count" id="max-participants-count" required>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10" selected>10</option>
+        </select>
+      </div>
+
+      <div class="form-label">
+        <label for="flexRadioDefault" class="form-label">
+          Тип встречи
+        </label>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="is-private" id="is-private-1" checked>
+          <label class="form-check-label" for="is-private-1">
+            Открытая
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="is-private" id="is-private-2">
+          <label class="form-check-label" for="is-private-2">
+            Закрытая
+          </label>
+        </div>
+      </div>
+
+      <div class="form-label pb-1">
+        <label for="user-name" class="form-label">
+          Представьтесь, пожалуйста
+        </label>
+        <input type="text" class="form-control" id="user-name" required minlength="3" maxlength="50">
+      </div>
+    </form>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+    crossorigin="anonymous"></script>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    const mainButton = tg.MainButton;
+    const form = document.querySelector('form');
+
+    const datetime = document.getElementById('datetime');
+    const future = new Date();
+    future.setMonth(future.getMonth() + 3);
+    datetime.min = new Date().toISOString().slice(0, 16);
+    datetime.max = future.toISOString().slice(0, 16);
+
+    mainButton.setParams({
+      text: 'Предложить',
+      is_active: true,
+      is_visible: true,
+    });
+    tg.ready();
+    tg.expand();
+
+    mainButton.onClick(() => {
+      mainButton.showProgress();
+      validateDateTime(datetime);
+
+      if (!form.checkValidity()) {
+        mainButton.hideProgress();
+        return;
+      }
+      const dto = JSON.stringify({
+        movie: {
+          name: document.getElementById('movie-name').value,
+          description: document.getElementById('movie-description').value,
+          update: document.getElementById('movie-update').checked,
+        },
+        date: document.getElementById('datetime').value,
+        isPrivate: document.getElementsByName('is-private')[1].checked,
+        maxParticipantsCount: Number(document.getElementById('max-participants-count').value),
+        user: {
+          name: document.getElementById('user-name').value,
+        },
+      });
+      tg.sendData(dto).then(() => tg.close());
+    });
+
+    function validateDateTime(datetime) {
+      if (!datetime.value) {
+        datetime.setCustomValidity('Выберите дату и время!');
+        datetime.reportValidity();
+        return;
+      }
+      const date = new Date(datetime.value);
+      const hour = date.getHours();
+      const minutes = date.getMinutes();
+      const weekday = date.getDay();
+      if (date < Date.now()) {
+        datetime.setCustomValidity('Выберите будущую дату.');
+      } else if (date > future) {
+        datetime.setCustomValidity(`Выберите дату ранее ${future.toLocaleDateString('ru-RU')}`);
+      } else if (/^[013]$/.test(weekday)) {
+        datetime.setCustomValidity('Выберите вт, чт, пт или сб.');
+      } else if (hour < 18 || (hour > 21 && minutes > 0)) {
+        datetime.setCustomValidity('Выберите время c 18:00 до 21:00.');
+      } else {
+        datetime.setCustomValidity('');
+      }
+      datetime.reportValidity();
+    }
+  </script>
+
+</body>
+
+</html>
