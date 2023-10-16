@@ -177,7 +177,7 @@
         datetime.setCustomValidity(`Выберите дату ранее ${future.toLocaleDateString('ru-RU')}`);
       } else if (/^[013]$/.test(weekday)) {
         datetime.setCustomValidity('Выберите вт, чт, пт или сб.');
-      } else if (hour < 18 || (hour > 21 && minutes > 0)) {
+      } else if (hour < 18 || (hour >= 21 && minutes > 0)) {
         datetime.setCustomValidity('Выберите время c 18:00 до 21:00.');
       } else {
         datetime.setCustomValidity('');
