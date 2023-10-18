@@ -18,16 +18,21 @@
     .form-label input,
     .form-label input:focus,
     .form-label textarea,
-    .form-label textarea:focus {
+    .form-label textarea:focus,
+    .form-label .input-group input,
+    .form-label .input-group input:focus {
       background-color: var(--tg-theme-bg-color);
       color: var(--tg-theme-text-color);
     }
 
-    .form-label input::placeholder {
+    .form-label input::placeholder,
+    .form-label .input-group input::placeholder {
       color: var(--tg-theme-text-color);
     }
 
-    button {
+    button,
+    .btn,
+    .btn:hover {
       background-color: var(--tg-theme-button-color);
       color: var(--tg-theme-button-text-color);
     }
@@ -58,12 +63,17 @@
         </select>
       </div>
 
-      <div class="form-label">
-        <label for="phone" class="form-label">
+      <div id="phone-div" class="form-label">
+        <label id="phone-label" for="inner-phone-div" class="form-label">
           Номер телефона
         </label>
-        <input type="tel" class="form-control" id="phone" placeholder="89XXXXXXXXX" required
-          pattern="^(?:\+7|8)[\s-]?(?:\(\d{3}\)|\d{3})[\s-]?\d{3}[\s-]?\d{4}$">
+        <div id="inner-phone-div" class="input-group">
+          <input type="tel" class="form-control" id="phone" placeholder="89XXXXXXXXX" required
+            pattern="^(?:\+7|8)[\s-]?(?:\(\d{3}\)|\d{3})[\s-]?\d{3}[\s-]?\d{4}$">
+          <button type="button" class="btn" onclick="onclickRequestPhoneButton()">
+            Подставить
+          </button>
+        </div>
       </div>
 
       <div class="form-label">
@@ -89,6 +99,23 @@
     crossorigin="anonymous"></script>
 
   <script>
+    const { WebApp, WebApp: { MainButton } } = window.Telegram;
+
+    const form = document.querySelector('form');
+
+    if (!WebApp.isVersionAtLeast('6.9')) {
+      removeRequestPhoneButton();
+    }
+    MainButton.setParams({
+      text: 'Готово',
+      is_active: true,
+      is_visible: true,
+    });
+    WebApp.ready();
+    WebApp.expand();
+
+    MainButton.onClick(onclickMainButton);
+
     function onchangeFormat() {
       const format = document.getElementById('format').value;
       const day = document.getElementById('day');
@@ -110,39 +137,46 @@
       }
     }
 
-    const tg = window.Telegram.WebApp;
-    const mainButton = tg.MainButton;
-    try {
-      const form = document.querySelector('form');
-
-      mainButton.setParams({
-        text: 'Готово',
-        is_active: true,
-        is_visible: true,
-      });
-      tg.expand();
-      tg.ready();
-
-      mainButton.onClick(() => {
-        mainButton.showProgress();
-        form.classList.add('was-validated');
-
-        if (!form.checkValidity()) {
-          mainButton.hideProgress();
+    function onclickRequestPhoneButton() {
+      WebApp.onEvent('contactRequested', (data) => {
+        if (data.status === 'cancelled') {
           return;
         }
-        const dto = JSON.stringify({
-          format: document.getElementById('format').value,
-          day: document.getElementById('day').value,
-          phone: document.getElementById('phone').value,
-          comment: document.getElementById('comment').value,
-        });
-        tg.sendData(dto).then(() => tg.close());
+        const phoneNumber = data.responseUnsafe?.contact?.phone_number;
+        if (!phoneNumber) {
+          WebApp.showAlert('Телефон оказался пустой, введите другой.');
+          WebApp.offEvent('contactRequested');
+          return;
+        }
+        document.getElementById('phone').value = /^(\+|8)/.test(phoneNumber)
+          ? phoneNumber : `+${phoneNumber}`;
+        WebApp.offEvent('contactRequested');
       });
-    } catch (e) {
-      document.getElementById('comment').value = e;
-    } finally {
-      mainButton.hideProgress();
+      WebApp.requestContact((isUserAgreed) => isUserAgreed && removeRequestPhoneButton());
+    }
+
+    function removeRequestPhoneButton() {
+      document.getElementById('phone-label').htmlFor = "phone";
+      document.getElementById('phone-div').append(document.getElementById('phone'));
+      document.getElementById('inner-phone-div').remove();
+    }
+
+    function onclickMainButton() {
+      MainButton.showProgress();
+      form.classList.add('was-validated');
+
+      if (!form.checkValidity()) {
+        MainButton.hideProgress();
+        return;
+      }
+      const dto = JSON.stringify({
+        format: document.getElementById('format').value,
+        day: document.getElementById('day').value,
+        phone: document.getElementById('phone').value,
+        comment: document.getElementById('comment').value,
+      });
+
+      WebApp.sendData(dto);
     }
   </script>
 
