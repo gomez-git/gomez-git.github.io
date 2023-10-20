@@ -33,6 +33,16 @@
     <form novalidate>
       <h2 class="text-center">Изменить текст</h2>
       <div class="form-label">
+        <label for="action" class="form-label">
+          Действие
+        </label>
+        <select class="form-select" id="action" required>
+          <option value="update" selected>Обновить</option>
+          <option value="append">Добавить</option>
+        </select>
+      </div>
+
+      <div class="form-label">
         <label for="button" class="form-label">
           Кнопка
         </label>
@@ -47,7 +57,7 @@
         <label for="text" class="form-label">
           Текст
         </label>
-        <textarea class="form-control" id="text" rows="10" required></textarea>
+        <textarea class="form-control" id="text" rows="10" required onchange="onchangeText();"></textarea>
       </div>
     </form>
   </div>
@@ -58,37 +68,54 @@
     crossorigin="anonymous"></script>
 
   <script>
-    const tg = window.Telegram.WebApp;
-    const mainButton = tg.MainButton;
-    try {
-      const form = document.querySelector('form');
+    const { WebApp, WebApp: { MainButton } } = window.Telegram;
+    const form = document.querySelector('form');
 
-      mainButton.setParams({
-        text: 'Изменить',
-        is_active: true,
-        is_visible: true,
+    MainButton.setParams({
+      text: 'Готово',
+      is_active: true,
+      is_visible: true,
+    });
+    WebApp.ready();
+    WebApp.expand();
+
+    MainButton.onClick(onclickMainButton);
+
+    function onchangeText() {
+      const text = document.getElementById('text');
+      if (!text.value) {
+        text.setCustomValidity('Ввведите текст');
+        form.reportValidity();
+        return;
+      }
+      const dto = JSON.stringify({
+        action: document.getElementById('action').value,
+        button: document.getElementById('button').value,
+        text: text.value,
       });
-      tg.ready();
-      tg.expand();
+      if (new Blob([dto]).size > 4096) {
+        text.setCustomValidity('Текст слишком длинный!');
+      } else {
+        text.setCustomValidity('');
+      }
+      form.reportValidity();
+    }
 
-      mainButton.onClick(() => {
-        mainButton.showProgress();
-        form.classList.add('was-validated');
+    function onclickMainButton() {
+      MainButton.showProgress();
+      form.classList.add('was-validated');
 
-        if (!form.checkValidity()) {
-          mainButton.hideProgress();
-          return;
-        }
-        const dto = JSON.stringify({
-          button: document.getElementById('button').value,
-          text: document.getElementById('text').value,
-        });
-        tg.sendData(dto).then(() => tg.close());
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        MainButton.hideProgress();
+        return;
+      }
+      const dto = JSON.stringify({
+        action: document.getElementById('action').value,
+        button: document.getElementById('button').value,
+        text: document.getElementById('text').value,
       });
-    } catch (e) {
-      document.getElementById('text').value = e;
-    } finally {
-      mainButton.hideProgress();
+      WebApp.sendData(dto);
     }
   </script>
 
