@@ -14,9 +14,9 @@
 
   <style>
     body,
-    .form-label select,
-    .form-label textarea,
-    .form-label textarea:focus {
+    .mb-2 select,
+    .mb-2 textarea,
+    .mb-2 textarea:focus {
       background-color: var(--tg-theme-bg-color);
       color: var(--tg-theme-text-color);
     }
@@ -30,9 +30,10 @@
 
 <body>
   <div id="main" class="container-fluid">
-    <form novalidate>
-      <h2 class="text-center">Изменить текст</h2>
-      <div class="form-label">
+    <h2 class="text-center m-2">Изменить текст</h2>
+
+    <form class="was-validated">
+      <div class="mb-2">
         <label for="action" class="form-label">
           Действие
         </label>
@@ -42,22 +43,23 @@
         </select>
       </div>
 
-      <div class="form-label">
+      <div class="mb-2">
         <label for="button" class="form-label">
           Кнопка
         </label>
-        <select class="form-select" id="button" required>
-          <option value="about-me" selected>Обо мне</option>
-          <option value="about-cabinet">Кабинет</option>
-          <option value="about-psychoanalysis">Подробнее о психоанализе</option>
+        <select class="form-select" id="button" onchange="validateTextLength();" required>
+          <option value="about-psyhoanalysis" selected>О психоанализе</option>
+          <option value="interpretation-of-dreams">Толкование сновидений</option>
+          <option value="free-associations">Свободные ассоциации</option>
+          <option value="about-me">Обо мне</option>
         </select>
       </div>
 
-      <div class="form-label">
+      <div class="mb-2">
         <label for="text" class="form-label">
           Текст
         </label>
-        <textarea class="form-control" id="text" rows="10" required onchange="onchangeText();"></textarea>
+        <textarea class="form-control" id="text" rows="10" required onchange="validateTextLength();"></textarea>
       </div>
     </form>
   </div>
@@ -69,51 +71,70 @@
 
   <script>
     const { WebApp, WebApp: { MainButton } } = window.Telegram;
+
     const form = document.querySelector('form');
+    const button = document.getElementById('button');
+    const text = document.getElementById('text');
 
     MainButton.setParams({
       text: 'Готово',
       is_active: true,
       is_visible: true,
     });
+    MainButton.onClick(onclickMainButton);
+
     WebApp.ready();
     WebApp.expand();
 
-    MainButton.onClick(onclickMainButton);
-
-    function onchangeText() {
-      const text = document.getElementById('text');
+    function validateTextLength() {
       if (!text.value) {
-        text.setCustomValidity('Ввведите текст');
+        text.setCustomValidity('Введите текст');
         form.reportValidity();
         return;
       }
-      const dto = JSON.stringify({
-        action: document.getElementById('action').value,
-        button: document.getElementById('button').value,
-        text: text.value,
-      });
-      if (new Blob([dto]).size > 4096) {
-        text.setCustomValidity('Текст слишком длинный!');
-      } else {
-        text.setCustomValidity('');
+      switch (button.value) {
+        case 'about-me': {
+          const textLength = text.value.length;
+          const MAX_TEXT_LENGTH = 1 * 1024;
+
+          if (textLength > MAX_TEXT_LENGTH) {
+            const lengthDiff = textLength - MAX_TEXT_LENGTH;
+            text.setCustomValidity(`Текст слишком длинный! Превышение символов на ${lengthDiff}.`);
+          } else {
+            text.setCustomValidity('');
+          }
+          break;
+        }
+        default: {
+          const dtoSize = new Blob([JSON.stringify({
+            action: document.getElementById('action').value,
+            button,
+            text: text.value,
+          })]).size;
+          const MAX_DTO_SIZE = 4 * 1024;
+
+          if (dtoSize > MAX_DTO_SIZE) {
+            const sizeDiff = dtoSize - MAX_DTO_SIZE;
+            text.setCustomValidity(`Текст слишком длинный! Превышение символов на ${sizeDiff}.`);
+          } else {
+            text.setCustomValidity('');
+          }
+        }
       }
-      form.reportValidity();
+      return form.reportValidity();
     }
 
     function onclickMainButton() {
       MainButton.showProgress();
-      form.classList.add('was-validated');
 
-      if (!form.checkValidity()) {
-        form.reportValidity();
+      if (!validateTextLength()) {
         MainButton.hideProgress();
         return;
       }
       const dto = JSON.stringify({
         action: document.getElementById('action').value,
-        button: document.getElementById('button').value,
-        text: document.getElementById('text').value,
+        button: button.value,
+        text: text.value,
       });
       WebApp.sendData(dto);
     }
