@@ -38,7 +38,8 @@
 
 <body>
   <div id="main" class="container-fluid">
-    <h2 class="text-center">Предложка Киноштапеля</h2>
+    <h2 class="text-center m-2">Предложка Киноштапеля</h2>
+
     <form class="was-validated">
       <div class="form-label">
         <label for="movie-name" class="form-label">
@@ -65,7 +66,7 @@
         <label for="datetime" class="form-label">
           Дата и время встречи
         </label>
-        <input type="datetime-local" class="form-control" id="datetime" onchange="validateDateTime(this);" required>
+        <input type="datetime-local" class="form-control" id="datetime" onchange="validateDateTime();" required>
         <div class="form-text">Встречу можно проводить во Вт, Чт, Пт, Сб с 18:00 до 21:00</div>
       </div>
 
@@ -104,7 +105,7 @@
         </div>
       </div>
 
-      <div class="form-label pb-1">
+      <div class="form-label">
         <label for="user-name" class="form-label">
           Представьтесь, пожалуйста
         </label>
@@ -119,49 +120,27 @@
     crossorigin="anonymous"></script>
 
   <script>
-    const tg = window.Telegram.WebApp;
-    const mainButton = tg.MainButton;
-    const form = document.querySelector('form');
+    const { WebApp, WebApp: { MainButton } } = window.Telegram;
 
+    const form = document.querySelector('form');
     const datetime = document.getElementById('datetime');
+
     const future = new Date();
     future.setMonth(future.getMonth() + 3);
     datetime.min = new Date().toISOString().slice(0, 16);
     datetime.max = future.toISOString().slice(0, 16);
 
-    mainButton.setParams({
+    MainButton.setParams({
       text: 'Предложить',
       is_active: true,
       is_visible: true,
     });
-    tg.ready();
-    tg.expand();
+    MainButton.onClick(onclickMainButton);
 
-    mainButton.onClick(() => {
-      mainButton.showProgress();
-      validateDateTime(datetime);
+    WebApp.ready();
+    WebApp.expand();
 
-      if (!form.checkValidity()) {
-        mainButton.hideProgress();
-        return;
-      }
-      const dto = JSON.stringify({
-        movie: {
-          name: document.getElementById('movie-name').value,
-          description: document.getElementById('movie-description').value,
-          update: document.getElementById('movie-update').checked,
-        },
-        date: document.getElementById('datetime').value,
-        isPrivate: document.getElementsByName('is-private')[1].checked,
-        maxParticipantsCount: Number(document.getElementById('max-participants-count').value),
-        user: {
-          name: document.getElementById('user-name').value,
-        },
-      });
-      tg.sendData(dto).then(() => tg.close());
-    });
-
-    function validateDateTime(datetime) {
+    function validateDateTime() {
       if (!datetime.value) {
         datetime.setCustomValidity('Выберите дату и время!');
         datetime.reportValidity();
@@ -183,6 +162,32 @@
         datetime.setCustomValidity('');
       }
       datetime.reportValidity();
+    }
+
+    function onclickMainButton() {
+      MainButton.showProgress();
+
+      validateDateTime();
+
+      if (!form.checkValidity()) {
+        MainButton.hideProgress();
+        return;
+      }
+      const dto = JSON.stringify({
+        movie: {
+          name: document.getElementById('movie-name').value,
+          description: document.getElementById('movie-description').value,
+          update: document.getElementById('movie-update').checked,
+        },
+        date: document.getElementById('datetime').value,
+        isPrivate: document.getElementsByName('is-private')[1].checked,
+        maxParticipantsCount: Number(document.getElementById('max-participants-count').value),
+        user: {
+          name: document.getElementById('user-name').value,
+        },
+      });
+
+      WebApp.sendData(dto);
     }
   </script>
 
